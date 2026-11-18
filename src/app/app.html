@@ -1,0 +1,77 @@
+<div style="padding: 2rem; font-family: sans-serif; max-width: 900px; margin: 0 auto;">
+  <h2>📦 Gestión de Productos (Cloud Firestore)</h2>
+
+  <div *ngIf="mensajeError" style="background-color: #f8d7da; color: #721c24; padding: 12px; border-radius: 6px; margin-bottom: 1rem;">
+    ⚠️ {{ mensajeError }}
+  </div>
+
+  <div style="background-color: #f8f9fa; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem; border: 1px solid #ddd;">
+    <h3>{{ modoEdicion ? '✏️ Editar Producto' : '➕ Registrar Nuevo Producto' }}</h3>
+    <form (ngSubmit)="guardarProducto()" style="display: flex; flex-direction: column; gap: 10px;">
+      <div>
+        <label style="font-weight: bold;">Nombre del Producto:</label>
+        <input type="text" [(ngModel)]="formProducto.nombre" name="nombre" style="width: 100%; padding: 8px; margin-top: 4px;">
+      </div>
+      <div style="display: flex; gap: 10px;">
+        <div style="flex: 1;">
+          <label style="font-weight: bold;">Precio ($):</label>
+          <input type="number" step="0.01" [(ngModel)]="formProducto.precio" name="precio" style="width: 100%; padding: 8px; margin-top: 4px;">
+        </div>
+        <div style="flex: 1;">
+          <label style="font-weight: bold;">Stock (Entero):</label>
+          <input type="number" [(ngModel)]="formProducto.stock" name="stock" style="width: 100%; padding: 8px; margin-top: 4px;">
+        </div>
+      </div>
+      <div>
+        <label style="font-weight: bold;">Categoría:</label>
+        <input type="text" [(ngModel)]="formProducto.categoria" name="categoria" style="width: 100%; padding: 8px; margin-top: 4px;">
+      </div>
+      <div style="display: flex; gap: 10px; margin-top: 10px;">
+        <button type="submit" style="padding: 10px 20px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
+          {{ modoEdicion ? 'Guardar Cambios' : 'Registrar en Firestore' }}
+        </button>
+        <button type="button" *ngIf="modoEdicion" (click)="cancelarEdicion()" style="padding: 10px 20px; background-color: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">
+          Cancelar Edición
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <div *ngIf="!cargando; else loader">
+    <table *ngIf="productos.length > 0; else noDatos" border="1" cellpadding="10" cellspacing="0" style="width: 100%; border-collapse: collapse; text-align: left;">
+      <thead style="background-color: #f2f2f2;">
+        <tr>
+          <th>Nombre</th>
+          <th>Precio</th>
+          <th>Stock</th>
+          <th>Categoría</th>
+          <th style="text-align: center;">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let prod of productos">
+          <td>{{ prod.nombre }}</td>
+          <td>${{ prod.precio }}</td>
+          <td>{{ prod.stock }} unidades</td>
+          <td>{{ prod.categoria }}</td>
+          <td style="text-align: center;">
+            <button (click)="seleccionarParaEditar(prod)" style="background-color: #ffc107; color: black; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; margin-right: 5px;">
+              Editar
+            </button>
+            <button (click)="eliminarProducto(prod)" style="background-color: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">
+              Eliminar
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <ng-template #noDatos>
+      <p>No hay productos registrados en la colección.</p>
+    </ng-template>
+  </div>
+  <ng-template #loader>
+    <p>Cargando datos desde Firebase...</p>
+  </ng-template>
+</div>
+
+<router-outlet />

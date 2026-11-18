@@ -1,7 +1,8 @@
-import { Component, OnInit, signal, ChangeDetectorRef, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, signal, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterOutlet } from '@angular/router';
+import { Subscription } from 'rxjs';
 
 import { ProductoService } from './services/producto';
 import { Producto } from './models/producto';
@@ -13,11 +14,12 @@ import { Producto } from './models/producto';
   templateUrl: './app.html',
   styleUrl: './app.css'
 })
-export class App implements OnInit {
+export class App implements OnInit, OnDestroy {
   protected readonly title = signal('practica-firebase');
 
   private productoService = inject(ProductoService);
   private cdr = inject(ChangeDetectorRef);
+  private subscripcionProductos!: Subscription;
 
   productos: Producto[] = [];
   cargando = true;
@@ -36,18 +38,28 @@ export class App implements OnInit {
     this.cargarProductos();
   }
 
-  async cargarProductos(): Promise<void> {
+  ngOnDestroy(): void {
+    if (this.subscripcionProductos) {
+      this.subscripcionProductos.unsubscribe();
+    }
+  }
+
+  cargarProductos(): void {
     this.cargando = true;
     this.mensajeError = null;
-    try {
-      this.productos = await this.productoService.obtenerProductos();
-      this.cargando = false;
-      this.cdr.detectChanges();
-    } catch (error) {
-      this.mensajeError = 'Error al cargar la colección desde Cloud Firestore.';
-      this.cargando = false;
-      this.cdr.detectChanges();
-    }
+
+    this.subscripcionProductos = this.productoService.obtenerProductosEnTiempoReal().subscribe({
+      next: (data) => {
+        this.productos = data;
+        this.cargando = false;
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.mensajeError = 'Error al conectar con Cloud Firestore en tiempo real.';
+        this.cargando = false;
+        this.cdr.detectChanges();
+      }
+    });
   }
 
   validarFormulario(): boolean {
@@ -63,8 +75,8 @@ export class App implements OnInit {
       this.mensajeError = 'El precio debe ser un número mayor o igual a 0.';
       return false;
     }
-    if (this.formProducto.stock === null || this.formProducto.stock < 0 || !Number.isInteger(this.formProducto.stock)) {
-      this.mensajeError = 'El stock debe ser un número entero mayor o igual a 0.';
+    if (this.formProducto.stock === null || this.formProducto.stock < 0) {
+      this.mensajeError = 'El stock debe ser un número mayor o igual a 0.';
       return false;
     }
 
@@ -83,9 +95,8 @@ export class App implements OnInit {
       }
 
       this.limpiarFormulario();
-      await this.cargarProductos();
     } catch (error) {
-      this.mensajeError = 'Error al procesar la transacción en Firestore.';
+      this.mensajeError = 'Error al guardar el producto en Firestore.';
     }
   }
 
@@ -113,7 +124,6 @@ export class App implements OnInit {
     if (confirmacion) {
       try {
         await this.productoService.eliminarProducto(prod.id);
-        await this.cargarProductos();
       } catch (error) {
         this.mensajeError = 'No se pudo eliminar el producto seleccionado.';
       }

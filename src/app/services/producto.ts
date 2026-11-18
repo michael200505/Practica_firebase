@@ -3,12 +3,13 @@ import { initializeApp } from 'firebase/app';
 import { 
   getFirestore, 
   collection, 
-  getDocs, 
+  onSnapshot, 
   addDoc, 
   updateDoc, 
   deleteDoc, 
   doc 
 } from 'firebase/firestore';
+import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { Producto } from '../models/producto';
 
@@ -20,18 +21,28 @@ export class ProductoService {
   private db = getFirestore(this.app);
   private coleccionNombre = 'productos';
 
-  async obtenerProductos(): Promise<Producto[]> {
-    const productosRef = collection(this.db, this.coleccionNombre);
-    const snapshot = await getDocs(productosRef);
-    return snapshot.docs.map(d => {
-      const data = d.data();
-      return {
-        id: d.id,
-        nombre: data['nombre'] || data['Nombre'] || 'Sin nombre',
-        precio: data['precio'] ?? 0,
-        stock: data['stock'] ?? 0,
-        categoria: data['categoria'] || data['Categoria'] || 'Sin categoría'
-      } as Producto;
+  // Escuchar la colección en tiempo real usando Observable
+  obtenerProductosEnTiempoReal(): Observable<Producto[]> {
+    return new Observable(observer => {
+      const productosRef = collection(this.db, this.coleccionNombre);
+      
+      const unsubscribe = onSnapshot(productosRef, (snapshot) => {
+        const productos: Producto[] = snapshot.docs.map(d => {
+          const data = d.data();
+          return {
+            id: d.id,
+            nombre: data['nombre'] || data['Nombre'] || 'Sin nombre',
+            precio: data['precio'] ?? 0,
+            stock: data['stock'] ?? 0,
+            categoria: data['categoria'] || data['Categoria'] || 'Sin categoría'
+          } as Producto;
+        });
+        observer.next(productos);
+      }, (error) => {
+        observer.error(error);
+      });
+
+      return () => unsubscribe();
     });
   }
 
